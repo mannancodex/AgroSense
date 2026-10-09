@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgroSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body class="authpage">
+<button id="langBtn" class="pill light langbtn" type="button">हिन्दी</button>
+<div class="auth-wrap">
+  <div class="auth-side"><span class="logo"><i></i>AgroSense</span>
+    <h1 data-i>Water your field at the right hour.</h1><p data-i>Register once, save your fields, and get heat, irrigation and crop-health advice for each one.</p>
+    <div class="arch small" aria-hidden="true"><div class="sun"></div><div class="rows"></div></div></div>
+  <form id="af" class="auth-card" novalidate>
+    <h2 data-i>{{ 'Create your farmer account' if mode == 'register' else 'Welcome back' }}</h2>
+    {% if mode == 'register' %}
+    <label><span data-i>Full name</span><input name="name" autocomplete="name" required></label>
+    <label><span data-i>Mobile number</span><input name="mobile" inputmode="tel" autocomplete="tel" data-ip="10-digit number" placeholder="10-digit number" required></label>
+    <label><span data-i>PIN code</span><span class="pinrow"><input id="pin" inputmode="numeric" maxlength="6" placeholder="400001"><button type="button" id="pinBtn" class="pill ghost" data-i>Look up</button></span></label>
+    <p class="muted hint" data-i>Enter your PIN code and tap Look up. State, district and village will fill in for you.</p>
+    <label><span data-i>State</span><select id="state"></select></label>
+    <label><span data-i>District / city</span><select id="district"></select><input id="districtTxt" data-ip="Type it here" hidden></label>
+    <label><span data-i>Village / area</span><select id="village"></select><input id="villageTxt" data-ip="Type it here" hidden></label>
+    <label><span data-i>Password</span><input name="password" type="password" minlength="8" autocomplete="new-password" required></label>
+    {% else %}
+    <label><span data-i>Mobile number</span><input name="mobile" inputmode="tel" autocomplete="tel" required></label>
+    <label><span data-i>Password</span><input name="password" type="password" autocomplete="current-password" required></label>
+    {% endif %}
+    <p id="err" class="err" role="alert"></p>
+    <button class="pill solid" id="go" data-i>{{ 'Create account' if mode == 'register' else 'Log in' }}</button>
+    <p class="muted center">{% if mode == 'register' %}<span data-i>Already registered?</span> <a href="/login" data-i>Log in</a>{% else %}<span data-i>New here?</span> <a href="/register" data-i>Create an account</a>{% endif %}</p>
+  </form>
+</div>
+<script>window.HI = {{ hi|tojson }};</script>
+<script src="{{ url_for('static', filename='i18n.js') }}"></script>
+<script>
+const $ = id => document.getElementById(id), H = { 'Content-Type': 'application/json' };
+const hdr = () => ({ ...H, 'X-Lang': LANG });
+const regMode = !!$('state');
+let STATES = [], D = { districts: [], villages: [] };
+function fill(sel, items, val, other = true) {
+  sel.innerHTML = ''; sel.add(new Option(t('Select'), '')); items.forEach(([v, l]) => sel.add(new Option(l, v)));
+  if (other) sel.add(new Option(t('Other (type it)'), '__other'));
+  if (val != null) sel.value = val; toggle(sel);
+}
+function toggle(sel) { const x = $(sel.id + 'Txt'); if (x) x.hidden = sel.value !== '__other'; }
+const val = id => $(id).value === '__other' ? $(id + 'Txt').value.trim() : $(id).value;
+const norm = s => s.toLowerCase().replace(/&/g, 'and').replace('pondicherry', 'puducherry').replace('orissa', 'odisha');
+function build() {
+  fill($('state'), STATES.map(s => [s, t(s)]), $('state').value, false);
+  fill($('district'), D.districts.map(x => [x, x]), $('district').value);
+  fill($('village'), D.villages.map(x => [x, x]), $('village').value);
+}
+if (regMode) {
+  ['state', 'district', 'village'].forEach(id => $(id).onchange = () => toggle($(id)));
+  fetch('/static/states.json').then(r => r.json()).then(s => { STATES = s; build(); });
+  $('pinBtn').onclick = async () => {
+    $('err').textContent = ''; const pin = $('pin').value.trim(); $('pinBtn').disabled = true;
+    try {
+      const r = await fetch('/api/pincode/' + encodeURIComponent(pin), { headers: hdr() }), d = await r.json(); if (!r.ok) throw new Error(d.error);
+      let st = STATES.find(s => norm(s) === norm(d.state)); if (!st) { st = d.state; STATES.push(st); }
+      D = { districts: d.districts, villages: d.villages }; build();
+      $('state').value = st; if (d.districts.length === 1) $('district').value = d.districts[0]; if (d.villages.length === 1) $('village').value = d.villages[0];
+    } catch (x) { $('err').textContent = x.message || t('Could not reach AgroSense. Check your connection.'); }
+    $('pinBtn').disabled = false;
+  };
+}
+window.onLang = () => { if (regMode) build(); $('err').textContent = ''; };
+$('af').onsubmit = async e => {
+  e.preventDefault(); const b = $('go'), er = $('err'); b.disabled = true; er.textContent = '';
+  try {
+    const body = Object.fromEntries(new FormData(e.target));
+    if (regMode) Object.assign(body, { state: val('state'), district: val('district'), village: val('village') });
+    const r = await fetch('/api/{{ mode }}', { method: 'POST', headers: hdr(), body: JSON.stringify(body) });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error); location = '/';
+  } catch (x) { er.textContent = x.message || t('Could not reach AgroSense. Check your connection.'); b.disabled = false; }
+};
+applyLang();
+</script></body></html>

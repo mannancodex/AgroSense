@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgroSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head><body>
+<header class="hero compact">
+  <nav><span class="logo"><i></i>AgroSense</span><span class="navr"><button id="langBtn" class="pill light" type="button">हिन्दी</button><button id="logout" class="pill light" data-i>Log out</button></span></nav>
+  <h1 id="hello" data-name="{{ farmer.name.split()[0] }}"></h1>
+  <p class="who">{{ farmer.village }}{% if farmer.district %}, {{ farmer.district }}{% endif %}{% if farmer.state %}, {{ farmer.state }}{% endif %} &nbsp;|&nbsp; +91 {{ farmer.mobile }}</p>
+</header>
+<main>
+  <aside class="panel">
+    <section>
+      <h2 data-i>My fields</h2>
+      <label><span data-i>Choose a field</span><select id="fieldSel"></select></label>
+      <div id="fieldInfo" class="info" hidden></div>
+      <button type="button" id="delField" class="pill ghost" data-i hidden>Remove this field</button>
+      <details id="addBox"><summary data-i>Register a new field</summary>
+        <form id="fieldForm" novalidate>
+          <label><span data-i>Field name</span><input id="fName" data-ip="e.g. North plot" placeholder="e.g. North plot" required></label>
+          <label><span data-i>Town or village (for weather)</span><input id="fTown" required></label>
+          <div class="two"><label><span data-i>Crop</span><select id="fCrop">{% for c in crops %}<option value="{{ c }}" data-i>{{ c }}</option>{% endfor %}</select></label>
+          <label><span data-i>Growth stage</span><select id="fStage">{% for s in stages %}<option value="{{ s }}" data-i>{{ s }}</option>{% endfor %}</select></label></div>
+          <label><span data-i>Area (acres)</span><input id="fArea" type="number" min="0.1" step="0.1" value="1"></label>
+          <p id="fErr" class="err" role="alert"></p>
+          <button class="pill solid" data-i>Save field</button>
+        </form></details>
+    </section>
+    <form id="form" novalidate>
+      <h2 data-i>Today's readings</h2>
+      <label><span data-i>Growth stage</span><select id="stage">{% for s in stages %}<option value="{{ s }}" data-i>{{ s }}</option>{% endfor %}</select></label>
+      <label><span data-i>Soil moisture</span> <output id="smOut">40%</output><input type="range" id="sm" min="3" max="95" value="40"></label>
+      <div class="three">
+        <label><span data-i>Nitrogen</span><input type="number" id="n" min="0" max="200" value="50"></label>
+        <label><span data-i>Phosphorus</span><input type="number" id="p" min="0" max="200" value="45"></label>
+        <label><span data-i>Potassium</span><input type="number" id="k" min="0" max="200" value="50"></label>
+      </div>
+      <button type="submit" id="run" class="pill solid" data-i>Run field analysis</button>
+    </form>
+  </aside>
+  <section class="results" aria-live="polite">
+    <div id="msg" class="empty"><h2 data-i>Your advice will appear here</h2><p data-i>Register a field, enter today's readings and choose Run field analysis.</p></div>
+    <div id="out" hidden>
+      <p class="place"><b id="place"></b></p>
+      <div class="grid">
+        <article class="card"><h3 data-i>Weather now</h3><div class="wx" id="wx"></div></article>
+        <article class="card"><h3 data-i>Heatwave risk</h3><div class="big" id="heatLabel"></div>
+          <div class="therm"><span id="thumb"></span></div><div class="scale"><span data-i>Normal</span><span data-i>Watch</span><span data-i>Warning</span><span data-i>Severe</span></div><p class="muted" id="heatNote"></p></article>
+        <article class="card dark"><h3 data-i>Irrigation today</h3><div class="num"><b id="irrMm">0</b><span data-i>litres/m²/day</span></div>
+          <p id="irrAcre"></p><p id="irrField"></p><p class="muted" id="irrConf"></p></article>
+        <article class="card"><h3 data-i>Crop growth health</h3>
+          <svg viewBox="0 0 180 105" class="arc"><path d="M20 90 A70 70 0 0 1 160 90" class="track"/><path id="arcFill" d="M20 90 A70 70 0 0 1 160 90" class="fill"/><text x="90" y="80" text-anchor="middle" id="arcNum">0</text></svg>
+          <div class="big center" id="verdict"></div></article>
+      </div>
+      <article class="card wide"><h3 data-i>Best time to irrigate</h3><div class="big sm" id="schedSum"></div><ul id="sessions" class="sess"></ul><ul id="why" class="why"></ul></article>
+      <article class="card wide"><h3 data-i>Nutrient balance for this stage</h3><div id="nuts" class="nuts"></div></article>
+      <article class="card wide"><h3 data-i>What to do</h3><ul id="recs"></ul></article>
+      <article class="card wide"><h3 data-i>Next 7 days</h3><div class="strip" id="strip"></div></article>
+    </div>
+  </section>
+</main>
+<footer data-i>AgroSense is an advisory tool. Heat risk follows IMD-style departure-from-normal rules; irrigation follows FAO-56 / Hargreaves. Confirm with your local KVK before major decisions.</footer>
+<script>window.HI = {{ hi|tojson }};</script>
+<script src="{{ url_for('static', filename='i18n.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script></body></html>
